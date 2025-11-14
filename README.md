@@ -27,7 +27,6 @@ Live filters include:
 - Lomo  
 - Hot / Cold / Winter / Spring  
 - Solarize, Posterize  
-…and more creative effects.
 
 ### 🔹 Real-Time Emotion Analytics
 - Tracks last 100 predicted emotions  
@@ -42,5 +41,12 @@ Live filters include:
 
 ---
 
+---
 
+## ⚠️ Files Not Added to GitHub
 
+Due to heavy size of Dataset files im unable to push it to git repo , for reference you can check the below sample dataset .
+
+### 1. Dataset  
+Download FER-2013 dataset:  
+https://www.kaggle.com/datasets/msambare/fer2013  
