@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Recognition Gamification</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .highlight { border: 2px solid #00ff99; }
+        .game-panel { margin-top: 20px; padding: 10px; border: 2px solid #ccc; width: 300px; }
+        .video-section { display: flex; flex-direction: column; align-items: center; }
+        .filter-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+        .filter-btn { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="video-secti`on">
+        <img id="video-feed" src="/video_feed">
+        <div class="controls">
+            <button id="start-stop">Start</button>
+        </div>
+
+        <!-- Gamification Panel -->
+        <div class="game-panel">
+            <h2>Target Emotion: <span id="target-emotion">😊</span></h2>
+            <h3>Time Left: <span id="time-left">30</span>s</h3>
+            <h3>Score: <span id="score">0</span></h3>
+            <button id="start-game">Start Game</button>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <canvas id="emotionChart"></canvas>
+        <div class="filter-buttons">
+            <button class="filter-btn" data-filter="none">None</button>
+            <button class="filter-btn" data-filter="sketch">Sketch</button>
+            <button class="filter-btn" data-filter="emboss">Emboss</button>
+            <button class="filter-btn" data-filter="sepia">Sepia</button>
+            <button class="filter-btn" data-filter="invert">Invert</button>
+            <button class="filter-btn" data-filter="gray">Gray</button>
+            <button class="filter-btn" data-filter="blur">Blur</button>
+            <button class="filter-btn" data-filter="cartoon">Cartoon</button>
+            <button class="filter-btn" data-filter="pencil">Pencil</button>
+            <button class="filter-btn" data-filter="warm">Warm</button>
+            <button class="filter-btn" data-filter="cool">Cool</button>
+            <button class="filter-btn" data-filter="hot">Hot</button>
+            <button class="filter-btn" data-filter="winter">Winter</button>
+            <button class="filter-btn" data-filter="vintage">Vintage</button>
+            <button class="filter-btn" data-filter="lomo">Lomo</button>
+            <button class="filter-btn" data-filter="cartoon2">Cartoon 2</button>
+            <button class="filter-btn" data-filter="posterize">Posterize</button>
+            <button class="filter-btn" data-filter="solarize">Solarize</button>
+            <button class="filter-btn" data-filter="cold">Cold</button>
+            <button class="filter-btn" data-filter="spring">Spring</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let running = false;
+let chart;
+
+// Start/Stop Video
+document.getElementById('start-stop').addEventListener('click', async () => {
+    const res = await fetch('/toggle_stream', {method: 'POST'});
+    const data = await res.json();
+    running = data.running;
+    document.getElementById('start-stop').textContent = running ? 'Stop' : 'Start';
+});
+
+// Filter buttons
+const filterButtons = document.querySelectorAll('.filter-btn');
+filterButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const filter = btn.getAttribute('data-filter');
+        await fetch('/set_filter', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({filter})
+        });
+        filterButtons.forEach(b => b.classList.remove('highlight'));
+        btn.classList.add('highlight');
+    });
+});
+
+// Chart.js setup
+const ctx = document.getElementById('emotionChart').getContext('2d');
+chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['angry','disgust','fear','happy','neutral','sad','surprise'],
+        datasets: [{
+            label: 'Emotion Count',
+            data: [0,0,0,0,0,0,0],
+            backgroundColor: 'rgba(0,255,150,0.5)',
+            borderColor: 'rgba(0,255,150,1)',
+            borderWidth: 1
+        }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+});
+
+// Update chart every second
+setInterval(async () => {
+    const res = await fetch('/get_emotion_history');
+    const data = await res.json();
+    chart.data.datasets[0].data = Object.values(data);
+    chart.update();
+}, 1000);
+
+// ---------------- Gamification ----------------
+let gameDuration = 30;
+let score = 0;
+let timerInterval = null;
+let targetEmotion = null;
+
+const targetEl = document.getElementById('target-emotion');
+const timeEl = document.getElementById('time-left');
+const scoreEl = document.getElementById('score');
+const startGameBtn = document.getElementById('start-game');
+
+function pickRandomEmotion(){
+    const emotions = ['angry','disgust','fear','happy','neutral','sad','surprise'];
+    const e = emotions[Math.floor(Math.random()*emotions.length)];
+    targetEmotion = e;
+    targetEl.textContent = e;
+}
+
+startGameBtn.addEventListener('click', ()=>{
+    pickRandomEmotion();
+    let timeLeft = gameDuration;
+    timeEl.textContent = timeLeft;
+    score = 0;
+    scoreEl.textContent = score;
+
+    if(timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(async ()=>{
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        const res = await fetch('/get_dominant_emotion');
+        const data = await res.json();
+        if(data.dominant === targetEmotion){
+            score++;
+            scoreEl.textContent = score;
+        }
+        if(timeLeft <= 0){
+            clearInterval(timerInterval);
+            alert(`Game Over! Your score: ${score}`);
+        }
+    }, 1000);
+});
+</script>
+</body>
+</html>
